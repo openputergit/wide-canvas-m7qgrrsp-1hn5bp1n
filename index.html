@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZetaVerse Entertainment Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .video-container {
+            position: relative;
+            height: calc(100vh - 60px);
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+        }
+        .video-item {
+            scroll-snap-align: start;
+            height: 100%;
+        }
+        .engagement-buttons button:hover {
+            transform: scale(1.1);
+            transition: transform 0.2s;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Custom scroll for mobile */
+        ::-webkit-scrollbar {
+            width: 0px;
+        }
+        /* Loading animation */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+    <!-- Navigation -->
+    <nav class="fixed bottom-0 w-full bg-black border-t border-gray-800 z-50">
+        <div class="flex justify-around items-center p-3">
+            <button onclick="switchTab('videos')" class="text-center">
+                <i class="bi bi-play-circle text-2xl"></i>
+                <p class="text-xs">Videos</p>
+            </button>
+            <button onclick="switchTab('fantasy')" class="text-center">
+                <i class="bi bi-trophy text-2xl"></i>
+                <p class="text-xs">Fantasy</p>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Videos Section -->
+    <div id="videos-section" class="pb-16">
+        <!-- Top Bar -->
+        <div class="fixed top-0 w-full bg-black/80 backdrop-blur-sm z-40 p-4 flex justify-between items-center">
+            <div class="text-xl">For You</div>
+            <div class="flex gap-4">
+                <i class="bi bi-search text-2xl"></i>
+                <i class="bi bi-bell text-2xl"></i>
+                <i class="bi bi-broadcast text-2xl text-red-500"></i>
+            </div>
+        </div>
+
+        <!-- Video Feed -->
+        <div class="video-container mt-14" id="video-feed">
+            <!-- Videos will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Fantasy Sports Section -->
+    <div id="fantasy-section" class="hidden pb-16">
+        <div class="fixed top-0 w-full bg-gradient-to-r from-red-600 to-red-800 p-4 z-40">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold">Fantasy League</div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-white text-red-600 px-3 py-1 rounded-full text-sm">
+                        ₹1000
+                    </div>
+                    <i class="bi bi-person-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-16 p-4">
+            <!-- Upcoming Matches -->
+            <div class="bg-gray-900 rounded-lg p-4 mb-4">
+                <h2 class="text-lg font-bold mb-3">Upcoming Matches</h2>
+                <div class="space-y-3" id="matches-container">
+                    <!-- Matches will be loaded here -->
+                </div>
+            </div>
+
+            <!-- My Contests -->
+            <div class="bg-gray-900 rounded-lg p-4">
+                <h2 class="text-lg font-bold mb-3">My Contests</h2>
+                <div id="contests-container">
+                    <!-- Contests will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MongoDB App Slug
+        const APP_SLUG = 'entertainment-hub-123456';
+        
+        // Generate a persistent user ID
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+
+        // Video Data Structure
+        const videoData = [
+            {
+                username: '@dancerPro',
+                description: 'Check out this amazing dance! #dance #viral',
+                videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-1232-large.mp4',
+                likes: '120.5K',
+                comments: '1.2K',
+                shares: '10.2K'
+            },
+            {
+                username: '@foodLover',
+                description: 'Making the perfect pasta! 🍝 #cooking #food',
+                videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-serving-dinner-to-a-guest-4660-large.mp4',
+                likes: '89.3K',
+                comments: '956',
+                shares: '5.6K'
+            }
+        ];
+
+        // Fantasy Match Data
+        const matchData = [
+            {
+                team1: 'CSK',
+                team2: 'MI',
+                time: '7:30 PM Today',
+                prize: '₹10 Crores'
+            },
+            {
+                team1: 'RCB',
+                team2: 'KKR',
+                time: '3:30 PM Tomorrow',
+                prize: '₹5 Crores'
+            }
+        ];
+
+        function createVideoElement(video) {
+            return `
+                <div class="video-item relative">
+                    <video class="w-full h-full object-cover" loop>
+                        <source src="${video.videoUrl}" type="video/mp4">
+                    </video>
+                    <div class="absolute bottom-0 left-0 p-4 w-full bg-gradient-to-t from-black/80 to-transparent">
+                        <div class="text-lg font-bold">${video.username}</div>
+                        <div class="text-sm">${video.description}</div>
+                    </div>
+                    <div class="absolute right-4 bottom-20 engagement-buttons flex flex-col items-center gap-6">
+                        <button class="flex flex-col items-center">
+                            <i class="bi bi-heart text-3xl"></i>
+                            <span class="text-sm">${video.likes}</span>
+                        </button>
+                        <button class="flex flex-col items-center">
+                            <i class="bi bi-chat text-3xl"></i>
+                            <span class="text-sm">${video.comments}</span>
+                        </button>
+                        <button class="flex flex-col items-center">
+                            <i class="bi bi-share text-3xl"></i>
+                            <span class="text-sm">${video.shares}</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createMatchElement(match) {
+            return `
+                <div class="bg-gray-800 rounded-lg p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="text-center">
+                            <img src="https://via.placeholder.com/40" class="w-10 h-10 rounded-full">
+                            <div class="text-sm">${match.team1}</div>
+                        </div>
+                        <div class="text-xl font-bold">VS</div>
+                        <div class="text-center">
+                            <img src="https://via.placeholder.com/40" class="w-10 h-10 rounded-full">
+                            <div class="text-sm">${match.team2}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400">${match.time}</div>
+                        <div class="text-green-500">${match.prize}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchTab(tab) {
+            document.getElementById('videos-section').classList.toggle('hidden', tab !== 'videos');
+            document.getElementById('fantasy-section').classList.toggle('hidden', tab !== 'fantasy');
+            
+            if (tab === 'videos') {
+                initializeVideoFeed();
+            } else {
+                initializeFantasySection();
+            }
+        }
+
+        function initializeVideoFeed() {
+            const videoFeed = document.getElementById('video-feed');
+            videoFeed.innerHTML = '';
+            videoData.forEach(video => {
+                videoFeed.innerHTML += createVideoElement(video);
+            });
+
+            // Initialize video playing on scroll
+            const videos = document.querySelectorAll('video');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.play();
+                    } else {
+                        entry.target.pause();
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            videos.forEach(video => observer.observe(video));
+        }
+
+        function initializeFantasySection() {
+            const matchesContainer = document.getElementById('matches-container');
+            matchesContainer.innerHTML = '';
+            matchData.forEach(match => {
+                matchesContainer.innerHTML += createMatchElement(match);
+            });
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeVideoFeed();
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
